@@ -128,14 +128,14 @@ namespace Basic
 
                 this.Proc.Start();
 
-                //// I have no idea why this works?
-                //// from: http://www.blackwasp.co.uk/CaptureProcessOutput.aspx
+                // I have no idea why this works?
+                // from: http://www.blackwasp.co.uk/CaptureProcessOutput.aspx
                 this.Proc.BeginOutputReadLine();
                 this.Proc.BeginErrorReadLine();
 
                 if (wait_for_exit) { this.Proc.WaitForExit(); }
 
-                if (this.LogDbpath != null) { this.StoreInDb(); }
+                // if (this.LogDbpath != null) { this.StoreInDb(); }
 
                 this.IsSetup = true;
             }
@@ -190,7 +190,7 @@ namespace Basic
             return this;
         }
 
-        public GenericConsoleApplication Run(string args, bool wait_for_exit = true)
+        public GenericConsoleApplication RunAndWaitForExit(string args, bool wait_for_exit = true)
         {
             var arguments = args;
 
