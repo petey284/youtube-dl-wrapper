@@ -1,4 +1,5 @@
-﻿using System;
+﻿using Newtonsoft.Json;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 
@@ -17,6 +18,21 @@ namespace Basic
         IYoutubeDto Build();
     }
 
+    public class VideoInfo : IYoutubeDto
+    {
+        public VideoInfo(string videoId) { }
+        public IYoutubeDto Build() { return this; }
+    }
+
+    public class YoutubePlaylist
+    {
+        public string id;
+        public string _type;
+        public string ie_key;
+        public string title;
+        public string url;
+    }
+
     public class PlaylistInfo : IYoutubeDto
     {
         public string Id;
@@ -29,13 +45,31 @@ namespace Basic
 
         public IYoutubeDto Build()
         {
-            this.VideoIds = GetPlaylistVideoIds(this.Id);
+            this.VideoIds = GetPlaylistVideoIdsJson(this.Id);
             return this;
         }
 
-        private static List<string> GetPlaylistVideoIds(string playlistUrl)
+        // Return list of playlists
+        private static List<YoutubePlaylist> GetPlaylistVideoIds(string playlistUrl)
         {
-            var getVideoAsJsonCommand = $"/c youtube-dl.bat -j --flat-playlist {playlistUrl} ^| jq -r \".id\"";
+            // var getVideoAsJsonCommand = $"/c youtube-dl.bat -j --flat-playlist {playlistUrl} ^| jq -r \".id\"";
+            var getVideoAsJsonCommand = $"/c youtube-dl.exe -j --flat-playlist {playlistUrl}";
+
+            // For now I'm using my own process of getting the ids
+            return new Standard("C:\\Windows\\System32\\cmd.exe")
+                .RunAndWaitForExit(getVideoAsJsonCommand, true)
+                .TakeContent()
+                .Split('\n')
+                .Select(s => JsonConvert.DeserializeObject<YoutubePlaylist>(s))
+                .ToList();
+        }
+
+        private static List<string> GetPlaylistVideoIdsJson(string playlistUrl)
+        {
+            // var getVideoAsJsonCommand = $"/c youtube-dl.bat -j --flat-playlist {playlistUrl} ^| jq -r \".id\"";
+            var getVideoAsJsonCommand = $"/c youtube-dl.exe -j --flat-playlist {playlistUrl}";
+
+            //  TODO: { ^| jq -r \".id\" } => convert to json and pull out id
 
             // For now I'm using my own process of getting the ids
             return new Standard("C:\\Windows\\System32\\cmd.exe")
@@ -46,16 +80,34 @@ namespace Basic
         }
     }
 
+    public static class Ex
+    {
+        public static List<YoutubePlaylist> Get(this IEnumerable<string> json)
+        {
+            return json.Select(s => JsonConvert.DeserializeObject<YoutubePlaylist>(s)).ToList();
+        }
+    }
+
     public class YoutubeDataManager
     {
-        public List<IYoutubeDto> Items = new List<IYoutubeDto>();
+        public IEnumerable<IYoutubeDto> Items = new List<IYoutubeDto>();
         public YoutubeDataManager() { }
-        public void Add(IYoutubeDto item) { 
 
-            if (item.GetType() == typeof(PlaylistInfo))
-            {
-                this.Items.Add(item as PlaylistInfo);
-            }
+        public void AddVideo(string videoId)
+        {
+            var list = this.Items as List<IYoutubeDto>;
+
+            list.Add(new VideoInfo(videoId));
+
+            this.Items = list;
+        }
+
+        public void AddPlaylist(string playlistId)
+        {
+            var list = this.Items as List<IYoutubeDto>;
+
+            list.Add(new PlaylistInfo(playlistId));
+            this.Items = list;
         }
 
         public void BuildAll()
@@ -64,6 +116,18 @@ namespace Basic
             {
                 item.Build();
             }
+        }
+
+        public List<int> GetCounts()
+        {
+            var counts = new List<int>();
+            foreach (var item in Items)
+            {
+                var count = (item as PlaylistInfo).VideoIds.Count();
+                counts.Add(count);
+            }
+
+            return counts;
         }
     }
 
@@ -78,12 +142,19 @@ namespace Basic
             var playlistId = "PL4cTJUshV2MCpGQuYti2_x0DLYkflTdNX";
 
             var manager = new YoutubeDataManager();
-            manager.Add(new PlaylistInfo(playlistId));
+
+            manager.AddPlaylist(playlistId);
+
             manager.BuildAll();
 
-            var first = manager.Items.First();
+            var currentPlaylist = manager.Items.First() as PlaylistInfo;
 
-            Console.WriteLine();
+            var listOfVideos = currentPlaylist.VideoIds.AsEnumerable().Get();
+
+            foreach (var ids in listOfVideos)
+            {
+                if (ids != null) { Console.WriteLine(ids.id); } 
+            }
 
             Console.ReadLine();
         }
