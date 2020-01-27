@@ -11,9 +11,29 @@ namespace Basic
             return new List<string>();
         }
     }
-    public class YoutubeApiController
+
+    public interface IYoutubeDto
     {
-        public static List<string> GetPlaylistVideoIds(string playlistUrl)
+        IYoutubeDto Build();
+    }
+
+    public class PlaylistInfo : IYoutubeDto
+    {
+        public string Id;
+        public List<string> VideoIds;
+
+        public PlaylistInfo(string playlistId)
+        {
+            this.Id = playlistId;
+        }
+
+        public IYoutubeDto Build()
+        {
+            this.VideoIds = GetPlaylistVideoIds(this.Id);
+            return this;
+        }
+
+        private static List<string> GetPlaylistVideoIds(string playlistUrl)
         {
             var getVideoAsJsonCommand = $"/c youtube-dl.bat -j --flat-playlist {playlistUrl} ^| jq -r \".id\"";
 
@@ -26,21 +46,24 @@ namespace Basic
         }
     }
 
-    public class YoutubeDownloadManager
+    public class YoutubeDataManager
     {
-        public string PlaylistId;
-        public List<string> AllVideosList;
-        public YoutubeDownloadManager() { }
+        public List<IYoutubeDto> Items = new List<IYoutubeDto>();
+        public YoutubeDataManager() { }
+        public void Add(IYoutubeDto item) { 
 
-        public YoutubeDownloadManager(string playlistId)
-        {
-            this.PlaylistId = playlistId;
+            if (item.GetType() == typeof(PlaylistInfo))
+            {
+                this.Items.Add(item as PlaylistInfo);
+            }
         }
 
-        public void GetValues()
+        public void BuildAll()
         {
-            // Get all the videos
-            this.AllVideosList = YoutubeApiController.GetPlaylistVideoIds(this.PlaylistId);
+            foreach (var item in Items)
+            {
+                item.Build();
+            }
         }
     }
 
@@ -52,12 +75,15 @@ namespace Basic
 
             // Hardcode the playlist url for now but I need the playlist
             // url as one of the arguments
-            var playlistUrl = "PL4cTJUshV2MCpGQuYti2_x0DLYkflTdNX";
+            var playlistId = "PL4cTJUshV2MCpGQuYti2_x0DLYkflTdNX";
 
-            var manager = new YoutubeDownloadManager(playlistUrl);
-            manager.GetValues();
+            var manager = new YoutubeDataManager();
+            manager.Add(new PlaylistInfo(playlistId));
+            manager.BuildAll();
 
-            Console.WriteLine(manager.AllVideosList.Count());
+            var first = manager.Items.First();
+
+            Console.WriteLine();
 
             Console.ReadLine();
         }
