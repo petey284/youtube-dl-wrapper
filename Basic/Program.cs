@@ -72,7 +72,7 @@ namespace Basic
             //  TODO: { ^| jq -r \".id\" } => convert to json and pull out id
 
             // For now I'm using my own process of getting the ids
-            return new Standard("C:\\Windows\\System32\\cmd.exe")
+            return new Standard(@"C:\Windows\System32\cmd.exe")
                 .RunAndWaitForExit(getVideoAsJsonCommand, true)
                 .TakeContent()
                 .Split('\n')
@@ -141,19 +141,15 @@ namespace Basic
             // url as one of the arguments
             var playlistId = "PL4cTJUshV2MCpGQuYti2_x0DLYkflTdNX";
 
-            var manager = new YoutubeDataManager();
+            var procedures = new Procedures();
 
-            manager.AddPlaylist(playlistId);
+            // var listOfVideos = procedures.PrintVideoIds(playlistId);
 
-            manager.BuildAll();
-
-            var currentPlaylist = manager.Items.First() as PlaylistInfo;
-
-            var listOfVideos = currentPlaylist.VideoIds.AsEnumerable().Get();
+            var listOfVideos = procedures.ReturnThoseNotDownloaded(playlistId, new List<string>());
 
             foreach (var ids in listOfVideos)
             {
-                if (ids != null) { Console.WriteLine(ids.id); } 
+                if (ids != null) { Console.WriteLine(ids); }
             }
 
             Console.ReadLine();
